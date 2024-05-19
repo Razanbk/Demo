@@ -1,0 +1,50 @@
+pipeline {
+    agent any
+    tools{
+        maven 'maven'
+     //   jdk 'jdk11'
+    }
+    
+    environment {
+        SCANNER_HOME = tool "sonar-scanner"
+        
+    }
+    
+    stages{
+        stage("Cleanup Workspace"){
+                steps {
+                cleanWs()
+                }
+        }
+    
+        stage("Checkout from SCM"){
+                steps {
+                    git branch: 'main', changelog: false, poll: false, url: 'https://github.com/Razanbk/Demo.git'
+                }
+        }
+        
+        stage('Build Maven'){
+            steps{
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/Razanbk/Demo.git']])
+               sh 'cd ecomm-product && mvn clean install'
+            }
+        }
+        
+        stage('Unit test'){
+            steps{
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/Razanbk/Demo.git']])
+                sh "cd ecomm-product && mvn test"
+            }
+        }
+        stage("SonarQube Analysis"){
+            steps {
+                    script {
+                        withSonarQubeEnv(credentialsId: 'jenkins-sonar') { 
+                                sh "cd ecomm-product && mvn sonar:sonar"
+                                //sh "mvn sonar:sonar"
+                        }
+                    }
+            }
+        }
+    }
+}
